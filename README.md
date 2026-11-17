@@ -107,3 +107,51 @@ On specific PHP configurations, the scanner may report a false positive when its
 This was reproduced on patched PHP 8.4.27 with `memory_limit` values from **2M to 32M**, and on PHP 8.3.36 at **128M** when `max_multipart_body_parts` is set to **2785 or higher**. The exact threshold may vary between builds.
 
 When PHP does not disclose its version, the scanner cannot distinguish this safe post-patch OOM from the vulnerable pre-patch behavior. Results should therefore be verified against the installed PHP version and any vendor backports
+
+## Exploits
+
+Three RCE exploits (Chains A, B, C) are included in [`exploit/`](exploit/):
+
+| File | Chain | What It Does |
+|------|-------|-------------|
+| `chain_a_session_lfi.py` | A | Injects PHP code via upload filename → LFI includes session file → RCE |
+| `chain_b_uaf_rce.php` | B | var_destroy UAF → discovers `zif_system` via EG() → overwrites `var_dump` handler via `/proc/self/mem` → RCE |
+| `chain_c_mismatch_rce.py` | C | Pollutes FPM worker `PS(serializer)` → injects serialized object via filename → `__destruct` fires on decode failure → RCE |
+
+Chains D and E exploits are available to [paid subscribers](https://qideng.substack.com/p/php2shell-dissecting-phps-critical).
+
+```bash
+# Chain A: Session injection + LFI → RCE
+python3 exploit/chain_a_session_lfi.py --host TARGET --port 80 --command 'id'
+
+# Chain B: var_destroy UAF → RCE (run on target or via uploaded webshell)
+php exploit/chain_b_uaf_rce.php
+
+# Chain C: Handler mismatch → __destruct → RCE
+python3 exploit/chain_c_mismatch_rce.py --host TARGET --port 80 --command 'id'
+```
+
+## Detection Rules
+
+Pre-built IDS / WAF / SIEM rules in [`detection/`](detection/):
+
+| File | Format | Signatures |
+|------|--------|-----------|
+| `php2shell.rules` | Suricata / Snort | 13 rules — request, response, and recon |
+| `php2shell.yaml` | Sigma | 5 rules — web logs, process creation, file events |
+| `modsecurity.conf` | ModSecurity v2/v3 | 7 rules — drop-in for Apache/Nginx |
+| `php2shell.lua` | OpenResty Lua | Lightweight reverse proxy module |
+
+**Fastest mitigation:** block `PHP_SESSION_UPLOAD_PROGRESS` in multipart POST bodies. Near-zero legitimate use, covers the primary attack vector for both CVEs.
+
+## Mitigation
+
+```ini
+; Immediate — reduces attack surface
+session.upload_progress.enabled = Off
+session.use_only_cookies = On
+```
+
+> **The only complete fix is patching PHP** to 8.2.35 / 8.3.36 / 8.4.27 / 8.5.12+. The OOM corruption (Chain D) is in the Zend engine core — no INI setting fixes it.
+
+For legacy / EOL environments (PHP 5.4–8.1) where upstream provides no official security updates, community-maintained backports with deployment automation and verification tooling are available at [Anton-Barinov/php2shell-patches](https://github.com/Anton-Barinov/php2shell-patches).
