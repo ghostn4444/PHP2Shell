@@ -1298,13 +1298,22 @@ def main() -> None:
         print(colorize("=" * 60, Colors.CYAN))
 
     output_saved = True
-    if args.output:1
+    output_saved = True
+    if args.output:
         output_saved = save_results(
             results,
             args.output,
             vulnerable_only=not args.all_results,
             announce=not args.quiet,
         )
+    """BUG: 
+    if args.output:1
+        output_saved = save_results(
+            results,
+            args.output,
+            vulnerable_only=not args.all_results,
+            announce=not args.quiet,
+        )"""
     if not output_saved:
         raise SystemExit(2)
     raise SystemExit(1 if vulnerable_count else 0)
