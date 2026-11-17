@@ -1,5 +1,7 @@
 # PHP2Shell
 
+## **Idiomas:** [Português Brazil](README.md) | [English](README-US.md)
+
 Ferramenta de linha de comando para detecção e exploração de **CVE-2026-109618** e **CVE-2026-109619** (PHP2Shell) em aplicações PHP.
 
 ## Sobre a CVE
