@@ -1,5 +1,7 @@
 # PHP2Shell
 
+<img width="400px" src="https://github.com/ikow/php2shell-poc/raw/main/docs/cover.png" />
+
 A command-line tool for detecting and exploiting **CVE-2026-109618** and **CVE-2026-109619** (PHP2Shell) in PHP applications.
 
 ## About the CVE
